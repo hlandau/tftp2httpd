@@ -1,5 +1,5 @@
 package main
-import "tftpsrv"
+import "github.com/hlandau/tftpsrv"
 import "net/http"
 import "regexp"
 import "flag"
@@ -18,10 +18,10 @@ func handler(req *tftpsrv.Request) error {
   log.Info("GET ", req.Filename)
   defer req.Close()
 
-  ip := req.ClientAddress()
+  addr := req.ClientAddress()
   if !validateFilename(req.Filename) {
-    req.WriteError(tftpsrv.ERR_FILE_NOT_FOUND, "File not found (invalid filename)")
-    log.Error("GET [", ip.String(), "] (bad filename)")
+    req.WriteError(tftpsrv.ErrFileNotFound, "File not found (invalid filename)")
+    log.Error("GET [", addr.IP.String(), "] (bad filename)")
     return nil
   }
 
@@ -30,19 +30,19 @@ func handler(req *tftpsrv.Request) error {
     return err
   }
 
-  hReq.Header.Add("X-Forwarded-For", ip.String())
+  hReq.Header.Add("X-Forwarded-For", addr.IP.String())
   hReq.Header.Add("User-Agent", "tftp2httpd")
   res, err := http.DefaultClient.Do(hReq)
   if err != nil {
-    log.Error("GET [", ip.String(), "] ", req.Filename, " -> HTTP Error: ", err)
+    log.Error("GET [", addr.IP.String(), "] ", req.Filename, " -> HTTP Error: ", err)
     return err
   }
   defer res.Body.Close()
 
   // Don't return error pages.
   if res.StatusCode != 200 {
-    req.WriteError(tftpsrv.ERR_FILE_NOT_FOUND, "File not found")
-    log.Error("GET [", ip.String(), "] ", req.Filename, " -> HTTP Code: ", res.StatusCode)
+    req.WriteError(tftpsrv.ErrFileNotFound, "File not found")
+    log.Error("GET [", addr.IP.String(), "] ", req.Filename, " -> HTTP Code: ", res.StatusCode)
     return nil
   }
 
@@ -68,20 +68,22 @@ var settings struct {
 }
 
 func main() {
-  cfg_path := flag.String("config-file", "etc/tftp2httpd.json", "JSON configuration file path")
+  cfgPath := flag.String("config-file", "etc/tftp2httpd.json", "JSON configuration file path")
   f_daemon := flag.Bool("daemon", false, "Daemonize (doesn't fork)")
   flag.Parse()
 
-  cfg_file, err := os.Open(*cfg_path)
+  cfgFile, err := os.Open(*cfgPath)
   log.Fatale(err, "can't open config file")
 
-  json_p := json.NewDecoder(cfg_file)
+  json_p := json.NewDecoder(cfgFile)
   err = json_p.Decode(&settings)
   log.Fatale(err, "can't decode configuration file")
-  cfg_file.Close()
+  cfgFile.Close()
 
-  s, err := tftpsrv.New(settings.TFTP_Listen, handler)
-  log.Fatale(err)
+  s := tftpsrv.Server{
+    Addr: settings.TFTP_Listen,
+    ReadHandler: handler,
+  }
 
   err = daemon.Init()
   log.Fatale(err, "can't init daemon")
@@ -97,3 +99,5 @@ func main() {
 
   s.ListenAndServe()
 }
+
+// © 2014 Hugo Landau <hlandau@devever.net>    GPLv3 or later
