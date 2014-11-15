@@ -95,7 +95,7 @@ func main() {
 		log.Fatale(err, "can't daemonize")
 	}
 
-	err = daemon.DropPrivileges(settings.UID, settings.GID)
+	err = daemon.DropPrivileges(settings.UID, settings.GID, daemon.EmptyChrootPath)
 	log.Fatale(err, "can't drop privileges")
 
 	s.ListenAndServe()
