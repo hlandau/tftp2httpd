@@ -95,10 +95,14 @@ func main() {
 		log.Fatale(err, "can't daemonize")
 	}
 
+	err = s.Listen()
+	log.Fatale(err, "can't listen")
+
 	err = daemon.DropPrivileges(settings.UID, settings.GID, daemon.EmptyChrootPath)
 	log.Fatale(err, "can't drop privileges")
 
-	s.ListenAndServe()
+	err = s.ListenAndServe()
+	log.Fatale(err, "can't serve")
 }
 
 // © 2014 Hugo Landau <hlandau@devever.net>    GPLv3 or later
