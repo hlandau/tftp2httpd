@@ -71,10 +71,6 @@ var settings struct {
 func main() {
 	config := config.Configurator{
 		ProgramName: "tftp2httpd",
-		ConfigFilePaths: []string{"$BIN/../etc/tftp2httpd.conf",
-			"/etc/tftp2httpd/tftp2httpd.conf",
-			"/etc/tftp2httpd.conf",
-		},
 	}
 	config.ParseFatal(&settings)
 
