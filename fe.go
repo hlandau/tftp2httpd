@@ -3,11 +3,13 @@ package main
 import "github.com/hlandau/tftpsrv"
 import "net/http"
 import "regexp"
-import "flag"
-import "encoding/json"
-import "os"
+//import "flag"
+//import "encoding/json"
+//import "os"
 import "github.com/hlandau/degoutils/log"
-import "github.com/hlandau/degoutils/daemon"
+//import "github.com/hlandau/degoutils/daemon"
+import "github.com/hlandau/degoutils/service"
+import "github.com/hlandau/degoutils/config"
 
 var re_valid_fn = regexp.MustCompile("^([a-zA-Z0-9_-][a-zA-Z0-9_. :-]*/)*[a-zA-Z0-9_-][a-zA-Z0-9_. :-]*$")
 
@@ -62,47 +64,49 @@ func handler(req *tftpsrv.Request) error {
 }
 
 var settings struct {
-	HTTP_URL    string `json:"http_url"`
-	TFTP_Listen string `json:"tftp_listen"`
-	UID         int    `json:"uid"`
-	GID         int    `json:"gid"`
+	HTTP_URL    string `default:"" usage:"HTTP URL prefix to map to"`
+	TFTP_Listen string `default:":69" usage:"TFTP address to bind to"`
 }
 
 func main() {
-	cfgPath := flag.String("config-file", "etc/tftp2httpd.json", "JSON configuration file path")
-	f_daemon := flag.Bool("daemon", false, "Daemonize (doesn't fork)")
-	flag.Parse()
-
-	cfgFile, err := os.Open(*cfgPath)
-	log.Fatale(err, "can't open config file")
-
-	json_p := json.NewDecoder(cfgFile)
-	err = json_p.Decode(&settings)
-	log.Fatale(err, "can't decode configuration file")
-	cfgFile.Close()
-
-	s := tftpsrv.Server{
-		Addr:        settings.TFTP_Listen,
-		ReadHandler: handler,
+	config := config.Configurator{
+		ProgramName: "tftp2httpd",
+		ConfigFilePaths: []string{"$BIN/../etc/tftp2httpd.conf",
+			"/etc/tftp2httpd/tftp2httpd.conf",
+			"/etc/tftp2httpd.conf",
+		},
 	}
+	config.ParseFatal(&settings)
 
-	err = daemon.Init()
-	log.Fatale(err, "can't init daemon")
+	service.Main(&service.Info{
+		Name:          "tftp2httpd",
+		Description:   "TFTP to HTTP Daemon",
+		DefaultChroot: service.EmptyChrootPath,
+		RunFunc: func(smgr service.Manager) error {
+			s := tftpsrv.Server{
+				Addr: settings.TFTP_Listen,
+				ReadHandler: handler,
+			}
 
-	if *f_daemon {
-		log.OpenSyslog("tftp2httpd")
-		err = daemon.Daemonize()
-		log.Fatale(err, "can't daemonize")
-	}
+			err := s.Listen()
+			if err != nil {
+				return err
+			}
 
-	err = s.Listen()
-	log.Fatale(err, "can't listen")
+			err = smgr.DropPrivileges()
+			if err != nil {
+				return err
+			}
 
-	err = daemon.DropPrivileges(settings.UID, settings.GID, daemon.EmptyChrootPath)
-	log.Fatale(err, "can't drop privileges")
+			smgr.SetStarted()
+			smgr.SetStatus("tftp2httpd: running ok")
 
-	err = s.ListenAndServe()
-	log.Fatale(err, "can't serve")
+			go s.ListenAndServe()
+			<-smgr.StopChan()
+
+			return nil
+		},
+	})
 }
 
 // © 2014 Hugo Landau <hlandau@devever.net>    GPLv3 or later
