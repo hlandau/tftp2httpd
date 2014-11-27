@@ -3,11 +3,7 @@ package main
 import "github.com/hlandau/tftpsrv"
 import "net/http"
 import "regexp"
-//import "flag"
-//import "encoding/json"
-//import "os"
 import "github.com/hlandau/degoutils/log"
-//import "github.com/hlandau/degoutils/daemon"
 import "github.com/hlandau/degoutils/service"
 import "github.com/hlandau/degoutils/config"
 
@@ -80,7 +76,7 @@ func main() {
 		DefaultChroot: service.EmptyChrootPath,
 		RunFunc: func(smgr service.Manager) error {
 			s := tftpsrv.Server{
-				Addr: settings.TFTP_Listen,
+				Addr:        settings.TFTP_Listen,
 				ReadHandler: handler,
 			}
 
