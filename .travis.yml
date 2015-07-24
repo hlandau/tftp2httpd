@@ -2,7 +2,7 @@ language: go
 go:
   - 1.3
   - tip
-before-install:
+before_install:
   - if [ "$TRAVIS_OS_NAME" == "linux" ]; then travis_retry sudo apt-get update -qq; fi
   - if [ "$TRAVIS_OS_NAME" == "linux" ]; then travis_retry sudo apt-get install -qq libcap-dev; fi
 notifications:
