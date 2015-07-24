@@ -2,3 +2,8 @@ language: go
 go:
   - 1.3
   - tip
+notifications:
+  irc:
+    channels:
+      - "chat.freenode.net##hl-t"
+    skip_join: true
