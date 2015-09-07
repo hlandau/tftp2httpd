@@ -5,7 +5,7 @@ import "net/http"
 import "regexp"
 import "github.com/hlandau/degoutils/log"
 import "gopkg.in/hlandau/service.v1"
-import "github.com/hlandau/degoutils/config2"
+import "github.com/hlandau/degoutils/config"
 
 var re_valid_fn = regexp.MustCompile("^([a-zA-Z0-9_-][a-zA-Z0-9_. :-]*/)*[a-zA-Z0-9_-][a-zA-Z0-9_. :-]*$")
 
@@ -65,7 +65,7 @@ var settings struct {
 }
 
 func main() {
-	config := config2.Configurator{
+	config := config.Configurator{
 		ProgramName: "tftp2httpd",
 	}
 	config.ParseFatal(&settings)
