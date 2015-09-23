@@ -4,7 +4,7 @@ import "github.com/hlandau/tftpsrv"
 import "net/http"
 import "regexp"
 import "github.com/hlandau/degoutils/log"
-import "gopkg.in/hlandau/service.v1"
+import "gopkg.in/hlandau/service.v2"
 import "gopkg.in/hlandau/easyconfig.v1"
 
 var re_valid_fn = regexp.MustCompile("^([a-zA-Z0-9_-][a-zA-Z0-9_. :-]*/)*[a-zA-Z0-9_-][a-zA-Z0-9_. :-]*$")
