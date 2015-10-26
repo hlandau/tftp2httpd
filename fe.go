@@ -3,9 +3,11 @@ package main
 import "github.com/hlandau/tftpsrv"
 import "net/http"
 import "regexp"
-import "github.com/hlandau/degoutils/log"
+import "github.com/hlandau/xlog"
 import "gopkg.in/hlandau/service.v2"
 import "gopkg.in/hlandau/easyconfig.v1"
+
+var log, Log = xlog.New("tftp2httpd")
 
 var re_valid_fn = regexp.MustCompile("^([a-zA-Z0-9_-][a-zA-Z0-9_. :-]*/)*[a-zA-Z0-9_-][a-zA-Z0-9_. :-]*$")
 
