@@ -1,13 +1,26 @@
 package main
 
-import "github.com/hlandau/tftpsrv"
-import "net/http"
-import "regexp"
-import "github.com/hlandau/xlog"
-import "gopkg.in/hlandau/service.v2"
-import "gopkg.in/hlandau/easyconfig.v1"
+import (
+	"context"
+	"fmt"
+	"net/http"
+	"regexp"
+	"runtime/debug"
 
-var log, Log = xlog.New("tftp2httpd")
+	"github.com/alecthomas/kong"
+	"github.com/hlandau/slogkit/slogtree"
+	"github.com/hlandau/slogkit/slogtreecfg"
+	"github.com/hlandau/tftpsrv"
+	"gopkg.in/hlandau/service.v3"
+)
+
+var log, Log = slogtree.NewFacility("tftp2httpd")
+
+var (
+	knReqGet                 = log.MakeKnownInfo("REQ_GET")
+	knReqGetErrorBadFilename = log.MakeKnownError("REQ_GET_ERROR_BAD_FILENAME")
+	knReqGetErrorHTTP        = log.MakeKnownError("REQ_GET_ERROR_HTTP")
+)
 
 var re_valid_fn = regexp.MustCompile("^([a-zA-Z0-9_-][a-zA-Z0-9_. :-]*/)*[a-zA-Z0-9_-][a-zA-Z0-9_. :-]*$")
 
@@ -15,18 +28,18 @@ func validateFilename(fn string) bool {
 	return re_valid_fn.MatchString(fn)
 }
 
-func handler(req *tftpsrv.Request) error {
-	log.Info("GET ", req.Filename)
+func handler(ctx context.Context, req *tftpsrv.Request) error {
+	log.LogCtx(ctx, knReqGet, "filename", req.Filename)
 	defer req.Close()
 
 	addr := req.ClientAddress()
 	if !validateFilename(req.Filename) {
 		req.WriteError(tftpsrv.ErrFileNotFound, "File not found (invalid filename)")
-		log.Error("GET [", addr.IP.String(), "] (bad filename)")
+		log.LogCtx(ctx, knReqGetErrorBadFilename, "remoteAddr", addr.IP.String())
 		return nil
 	}
 
-	hReq, err := http.NewRequest("GET", settings.HTTP_URL+req.Filename, nil)
+	hReq, err := http.NewRequest("GET", settings.HttpUrl+req.Filename, nil)
 	if err != nil {
 		return err
 	}
@@ -35,7 +48,7 @@ func handler(req *tftpsrv.Request) error {
 	hReq.Header.Add("User-Agent", "tftp2httpd")
 	res, err := http.DefaultClient.Do(hReq)
 	if err != nil {
-		log.Error("GET [", addr.IP.String(), "] ", req.Filename, " -> HTTP Error: ", err)
+		log.LogCtx(ctx, knReqGetErrorHTTP, "remoteAddr", addr.IP.String(), "filename", req.Filename, "httpError", err)
 		return err
 	}
 	defer res.Body.Close()
@@ -43,7 +56,7 @@ func handler(req *tftpsrv.Request) error {
 	// Don't return error pages.
 	if res.StatusCode != 200 {
 		req.WriteError(tftpsrv.ErrFileNotFound, "File not found")
-		log.Error("GET [", addr.IP.String(), "] ", req.Filename, " -> HTTP Code: ", res.StatusCode)
+		log.LogCtx(ctx, knReqGetErrorHTTP, "remoteAddr", addr.IP.String(), "filename", req.Filename, "httpCode", res.StatusCode)
 		return nil
 	}
 
@@ -62,24 +75,38 @@ func handler(req *tftpsrv.Request) error {
 }
 
 var settings struct {
-	HTTP_URL    string `default:"" usage:"HTTP URL prefix to map to"`
-	TFTP_Listen string `default:":69" usage:"TFTP address to bind to"`
+	HttpUrl    string             `default:"" help:"HTTP URL prefix to map to"`
+	TftpListen string             `default:":69" help:"TFTP address to bind to"`
+	Log        slogtreecfg.Config `embed:"" prefix:"log."`
+	Service    service.Config     `embed:"" prefix:"service."`
+	Version    bool               `help:"Print version information."`
 }
 
 func main() {
-	config := easyconfig.Configurator{
-		ProgramName: "tftp2httpd",
+	kong.Parse(&settings)
+	if settings.Version {
+		if buildInfo, ok := debug.ReadBuildInfo(); ok {
+			fmt.Print(buildInfo.String())
+		}
+		return
 	}
-	config.ParseFatal(&settings)
+
+	ctx := context.Background()
+	ctx = slogtreecfg.InitConfig(ctx, settings.Log)
 
 	service.Main(&service.Info{
 		Name:          "tftp2httpd",
 		Description:   "TFTP to HTTP Daemon",
 		DefaultChroot: service.EmptyChrootPath,
+
+		Config: settings.Service,
+
 		RunFunc: func(smgr service.Manager) error {
 			s := tftpsrv.Server{
-				Addr:        settings.TFTP_Listen,
-				ReadHandler: handler,
+				Addr: settings.TftpListen,
+				ReadHandler: func(req *tftpsrv.Request) error {
+					return handler(ctx, req)
+				},
 			}
 
 			err := s.Listen()
@@ -102,5 +129,3 @@ func main() {
 		},
 	})
 }
-
-// © 2014 Hugo Landau <hlandau@devever.net>    GPLv3 or later
