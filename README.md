@@ -52,6 +52,10 @@ Building
 You need the go compiler installed. Clone the repository and run 'make'. The
 daemon will be placed in the bin directory.
 
+Note that you will generally need the `libcap` or `libcap-dev` package to be
+installed. Alternatively you can build without CGo, though this disables some
+daemonisation-related functionality.
+
     # Install to $GOPATH/bin.
     go install github.com/hlandau/tftp2httpd@latest
 
@@ -85,6 +89,10 @@ The following flags are supported:
   `--service.daemon`: Daemonize (doesn't fork).
 
   `--service.chroot`: Specify custom chroot dir.
+
+  `--version`: Print version.
+
+Pass `--help` for other supported flags.
 
 You can either:
 
