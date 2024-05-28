@@ -1,3 +1,0 @@
-[tftp2httpd]
-http_url="http://example.com/foo/"
-tftp_listen=":69"

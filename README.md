@@ -37,11 +37,6 @@ Status
 This is early alpha software. It appears to work nicely, but I don't at this
 point guarantee there isn't some memory leak somewhere.
 
-Requirements
-------------
-Besides the Go compiler and Go standard library, github.com/hlandau/degoutils
-is required. See the build instructions below.
-
 Security
 --------
 tftp2httpd is designed to be highly secure. Besides being written in Go, which
@@ -57,48 +52,39 @@ Building
 You need the go compiler installed. Clone the repository and run 'make'. The
 daemon will be placed in the bin directory.
 
-    # Clone.
-    git clone https://github.com/hlandau/tftp2httpd
-    cd tftp2httpd
-
-    # Build.
-    make
-
-    # Configure.
-    mkdir etc; cp doc/tftp2httpd.conf.example etc/tftp2httpd.conf
+    # Install to $GOPATH/bin.
+    go install github.com/hlandau/tftp2httpd@latest
 
     # Run.
-    ./bin/tftp2httpd -conf=etc/tftp2httpd.conf
+    $GOPATH/bin/tftp2httpd \
+        --http-url=http://localhost/ --tftp-listen=:69 \
+        --service.uid=nobody
 
 Running
 -------
-The daemon requires a TOML configuration file. The path to this file should be
-specified with the `-conf` option to the daemon. An example is in
-`etc/tftp2httpd.conf`.
+The daemon is configured solely via command line flags. Pass `--help` for details.
 
-The following options are supported in the configuration file:
+The following flags are supported:
 
-  `http_url`: The URL to proxy TFTP file requests to. The TFTP filename will be
+  `--http-url`: The URL to proxy TFTP file requests to. The TFTP filename will be
     appended to this URL. A slash will not be added to the end of this URL
     automatically, so add one yourself if you want one.
 
-  `tftp_listen`: A string specifying what interface to bind on. Default: ":69".
+  `--tftp-listen`: A string specifying what interface to bind on. Default: ":69".
     You could bind on a specific interface using something like "127.0.0.1:69".
 
-The following additional options can be specified as flags only:
-
-  `-uid=UID`: UID of user to drop to if run as root. Ignored if not run as root. Must
+  `--service.uid=UID`: UID of user to drop to if run as root. Ignored if not run as root. Must
     be an integer. Usernames currently not supported because go doesn't support
     getpwnam.
 
-  `-gid=GID`: GID of group to drop to if run as root. Ignored if not run as root. Must
+  `--service.gid=GID`: GID of group to drop to if run as root. Ignored if not run as root. Must
     be an integer. Group names not currently supported.
 
-  `-pidfile=path`: Path to a PID file to create.
+  `--service.pidfile=path`: (UNIX) Path to a PID file to create.
 
-  `-daemon`: Daemonize (doesn't fork).
+  `--service.daemon`: Daemonize (doesn't fork).
 
-  `-chroot`: Specify custom chroot dir.
+  `--service.chroot`: Specify custom chroot dir.
 
 You can either:
 
@@ -110,7 +96,7 @@ You can either:
   3. Run as root with "uid" and "gid" set in the configuration file. The daemon
      will drop privileges and chroot automatically after binding.
 
-If you pass `-service.daemon=1`, the daemon will close stdin/stdout/stderr and setsid
+If you pass `--service.daemon`, the daemon will close stdin/stdout/stderr and setsid
 if possible. The daemon does not currently fork due to limitations with Go.
 
 tftp2httpd will log to syslog when daemonized using the `daemon` facility.
@@ -127,5 +113,5 @@ TODO
 Licence
 -------
 
-    © 2013—2014 Hugo Landau <hlandau@devever.net>  GPLv3+ License
+    © 2013—2024 Hugo Landau <hlandau@devever.net>  GPLv3+ License
 
