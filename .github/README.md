@@ -43,10 +43,6 @@ tftp2httpd is designed to be highly secure. Besides being written in Go, which
 eliminates many classes of possible security vulnerabilities, the daemon can
 chroot itself into an empty directory and drop privileges.
 
-For this reason, tftp2httpd cannot currently reload its configuration file.
-However, the configuration is so simple I don't think this is a significant
-problem.
-
 Building
 --------
 You need the go compiler installed. Clone the repository and run 'make'. The
